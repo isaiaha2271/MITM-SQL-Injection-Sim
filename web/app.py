@@ -1,6 +1,12 @@
 from flask import Flask, render_template, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
+host = "db"
+user = "user"
+password = "password_1"
+database = "labDB"
+
 app = Flask(__name__)
 
 
@@ -55,7 +61,7 @@ def search():
 
 
 #post end point for searching for users
-@app.route('/lookup/<username>', methods='POST')
+@app.route('/lookup/<username>', methods=['POST'])
 def lookup(username):
     pass
 

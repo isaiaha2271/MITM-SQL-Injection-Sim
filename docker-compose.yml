@@ -1,25 +1,47 @@
 version: '3.8'
 
 services:
-web: 
-  build: ./web
-  ports:
-    -"5000:5000"
-  depends_on:
-    - db
+  web: 
+    container_name: web_server
+    build: ./web
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - labnet
 
-db: 
-  image: mysql:8
-  environment: 
-    MYSQL_ROOT_PASSWORD: root
-    MYSQL_DATABASE: testdb
-  ports:
-    - "3306:3306"
+  db: 
+    image: mysql:8
+    container_name: mysql_db
+    restart: always
+    environment: 
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: labDB
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password_1
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    
+    networks:
+      - labnet
+    
 
 
+  #attacker:
+    #image: mitmproxy/mitmproxy
+    #command: mitmproxy --mode transparent
+    #ports:
+    #  - "8080:8080"
+    #networks:
+    #  - labnet
 
-attacker:
-  image: mitmproxy/mitmproxy
-  command: mitmproxy --mode transparent
-  ports:
-    - "8080:8080"
+
+volumes:
+  db_data:
+
+networks:
+  labnet:
+
