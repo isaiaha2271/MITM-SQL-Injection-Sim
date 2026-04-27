@@ -9,13 +9,16 @@
 - Summary metrics generated (summary.json)
 - Automated demo via make up && make demo
 - Unit tests implemented with coverage
-- 
+- WebApp endpoints (login, registration, logout,  dashboard, search, update_phone_number, lookup)
+     - SQL Injection vulnerable endpoints: login, dashboard, search, lookup
+- Basic user authentication on webapp
+   
 
 ## What’s Next
 
-- Integrate MITM pipeline with vulnerable web application
+- Integrate MITM pipeline with sql injection vulnerable web application
 - Capture victim request payloads (credentials, payload data) and log it
-- Attacker use intercepted credentials to access user data in DB
-- Attacker container perform SQL injection to bypass webapp authetnication, access and modify database 
+- Attacker use intercepted credentials to access victim data in DB
+- Attacker perform SQL injection attacks to bypass webapp authetnication, access and modify database 
 - Capture and analyze SQL injection traffic 
 - Improve logging to preserve domain names instead of IPs

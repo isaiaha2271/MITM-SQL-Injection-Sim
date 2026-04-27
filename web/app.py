@@ -134,10 +134,10 @@ def login():
 
     try:                                                               #='admin' OR '1'='1'
         query = f"SELECT username, password FROM USERS WHERE username = '{username_}' AND password = '{password_}'"
-        print("YOOOOOOOOOOOOO", flush=True)
+        #print("YOOOOOOOOOOOOO", flush=True)
         print(query, flush=True)
         cursor.execute(query)
-        row = cursor.fetchone()
+        row = cursor.fetchall()
 
 
         if row:
@@ -175,6 +175,7 @@ def dashboard():
     if (session.get("username")):
         try:
             query = f"SELECT firstName, lastName FROM USERS WHERE username = '{session.get('username')}'"
+            
             cursor.execute(query)
             row = cursor.fetchone()
 
@@ -233,6 +234,7 @@ def search():
    
     #sql injection vulnerable string
     query = f"SELECT firstName, lastName, address, phoneNumber, licenseNumber FROM USERS WHERE firstName = '{firstName}' AND lastName = '{lastName}'"
+    print(query, flush=True)
 
     try:
 
@@ -350,6 +352,7 @@ def lookup(username):
 
     #sql injection vulnerable string
     query = f"SELECT firstName, lastName, address, phoneNumber, licenseNumber FROM USERS WHERE username = '{username}'"
+    print(query, flush=True)
 
     try:
 
