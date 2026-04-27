@@ -4,4 +4,18 @@ bootstrap:
 	mkdir -p attacker
 	touch web/app.py
 	touch web/Dockerfile
-	echo "Project structure initialized."
+up:
+	docker compose up --build -d
+
+demo:
+	mkdir -p artifacts/release
+	sh scripts/run_demo.sh
+
+down:
+	docker compose down
+
+logs:
+	docker compose logs attacker
+
+test:
+	pytest -q
