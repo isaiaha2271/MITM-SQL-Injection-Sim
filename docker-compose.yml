@@ -9,24 +9,39 @@ services:
     depends_on:
       - db
     networks:
-      - labnet
+      - lab_network
+    secrets:
+      - MYSQL_PASSWORD
+      - FLASK_SECRET_KEY
+
+    environment:
+      - MYSQL_DATABASE=labDB
+      - MYSQL_HOST=db
+      - MYSQL_USER=user
+      - PYTHONUNBUFFERED=1
+
 
   db: 
     image: mysql:8
     container_name: mysql_db
     restart: always
     environment: 
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/MYSQL_ROOT_PASSWORD
       MYSQL_DATABASE: labDB
       MYSQL_USER: user
-      MYSQL_PASSWORD: password_1
+      MYSQL_PASSWORD_FILE: /run/secrets/MYSQL_PASSWORD
     ports:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     
     networks:
-      - labnet
+      - lab_network
+
+    secrets:
+      - MYSQL_PASSWORD
+      - MYSQL_ROOT_PASSWORD
     
 
 
@@ -36,12 +51,24 @@ services:
     #ports:
     #  - "8080:8080"
     #networks:
-    #  - labnet
+    #  - lab_network
+
+
+
+
+secrets:
+  FLASK_SECRET_KEY:
+     file: ./secrets/FLASK_SECRET.txt
+  MYSQL_PASSWORD: 
+    file: ./secrets/MYSQL_PASSWORD.txt
+  MYSQL_ROOT_PASSWORD: 
+    file: ./secrets/MYSQL_ROOT_PASSWORD.txt
+
 
 
 volumes:
   db_data:
 
 networks:
-  labnet:
+  lab_network:
 
