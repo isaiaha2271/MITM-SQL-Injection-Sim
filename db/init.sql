@@ -5,11 +5,11 @@ CREATE TABLE USERS (
     address VARCHAR(50) ,
     phoneNumber VARCHAR(50),
     licenseNumber VARCHAR(50),
-    firstName VARCHAR(50),
-    lastName VARCHAR(50)
+    firstName VARCHAR(50) not NULL,
+    lastName VARCHAR(50) not NULL
 );
 
 
-INSERT INTO USERS(username, password) VALUES
-('admin', 'admin123'),
-('test1', 'lebron');
+INSERT INTO USERS(username, password, firstName, lastName) VALUES
+('admin', 'admin123', 'head', 'administrator'),
+('test1', 'lebron', 'lebron', 'james');

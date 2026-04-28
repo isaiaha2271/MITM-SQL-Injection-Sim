@@ -32,5 +32,7 @@ sleep 2
 
 python3 "$REPO_ROOT/scripts/export_summary.py" #create summary artifact
 
+
+
 echo "Artifacts written to $REPO_ROOT/artifacts/release"
 ls -l "$REPO_ROOT/artifacts/release"

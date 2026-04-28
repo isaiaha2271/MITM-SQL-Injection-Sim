@@ -52,7 +52,7 @@ def register():
         return redirect(url_for('dashboard'))
     
     if request.method == "GET":
-        return render_template("register.html")
+        return render_template("register")
     
     #get values submited with form
     username = request.form["username"]
@@ -66,6 +66,7 @@ def register():
     #establish connection to db
     cnx = get_db_connection()
     cursor = cnx.cursor()
+    rowCount = None
 
     #attempt user registration  
     try: 
@@ -84,18 +85,9 @@ def register():
         cursor.execute(add_user, new_user)
 
         cnx.commit()
-
-        #check insertion was successful
-        if cursor.rowcount ==1:
-            '''return jsonify({"status":"success",
-                    "message":"User successfully registered",
-                    "userId":cursor.lastrowid
-                    }),201'''
-            return redirect(url_for("login"))
-        return jsonify({
-            "status":"fail",
-            "message": "user registration failed",
-        }),500
+        
+        rowCount = cursor.rowcount
+        
     
     #return exepction message
     except Exception as e:
@@ -106,6 +98,21 @@ def register():
     finally:
         cursor.close()
         cnx.close()
+
+        #check insertion was successful
+        if rowCount ==1:
+            '''return jsonify({"status":"success",
+                    "message":"User successfully registered",
+                    "userId":cursor.lastrowid
+                    }),201'''
+            return redirect(url_for("login"))
+        
+        return jsonify({
+            "status":"fail",
+            "message": "user registration failed",
+        }),500
+    
+        
 
 
 
@@ -130,25 +137,22 @@ def login():
 
     #establish connection to db
     cnx = get_db_connection()
-    cursor = cnx.cursor()
+    cursor = cnx.cursor(buffered=True)
 
-    try:                                                               #='admin' OR '1'='1'
+    try:                                                               #=admin' OR '1'='1
         query = f"SELECT username, password FROM USERS WHERE username = '{username_}' AND password = '{password_}'"
         #print("YOOOOOOOOOOOOO", flush=True)
         print(query, flush=True)
         cursor.execute(query)
-        row = cursor.fetchall()
+        rows = cursor.fetchall()
 
 
-        if row:
-            #if (username_ == row[0] and check_password_hash(str(row[1]),password_)):
+        if len(rows)>0:
+
+            #create a cookie flag  for user lgoin status
             session["logged_in"] = True
             session["username"] = username_
-            return redirect(url_for('dashboard'))
-        else:
-            return jsonify({"status": "Login Failed",
-                            "message": "Username or password is incorrect. Please try again."}),401
-    
+            
     except Exception as e:
         return jsonify({
             "status":"Data Base Error",
@@ -156,8 +160,17 @@ def login():
         }),500
     
     finally:
+        print(f"rows fetched: {len(rows)}", flush = True)
         cursor.close()
         cnx.close()
+
+        if session.get("logged_in"):
+            return redirect(url_for('dashboard'))
+        else:
+            return jsonify({"status": "Login Failed",
+                            "message": "Username or password is incorrect. Please try again."}),401
+    
+        
         
         
 
@@ -170,32 +183,20 @@ def dashboard():
 
     
     cnx = get_db_connection()
-    cursor = cnx.cursor()
-
+    cursor = cnx.cursor(buffered=True)
+    result = None
     if (session.get("username")):
         try:
             query = f"SELECT firstName, lastName FROM USERS WHERE username = '{session.get('username')}'"
             
             cursor.execute(query)
-            row = cursor.fetchone()
+            rows = cursor.fetchall()
 
-            if row: #if query resulted in retireved data return it to user
-
+            if len(rows)>0: #if query resulted in retireved data return it to user
+                result = rows[0]
             #return html page dispplaying user data  in DB
-                return render_template(
-                    "dashboard.html",
-                    username= session.get("username"),
-                    first_name=row[0],
-                    last_name=row[1]
-                )
-                            
 
-            else: 
-                #user not found in db
-                return jsonify({
-                    "status":"Failed to find user",
-                    "message":"User does not exist"
-                }),404
+                
 
         except Exception as e:
             return jsonify({
@@ -204,8 +205,26 @@ def dashboard():
             }),500
         
         finally:
+
             cursor.close()
             cnx.close()
+
+            if result:
+                return render_template(
+                        "dashboard.html",
+                        username= session.get("username"),
+                        first_name=result[0],
+                        last_name=result[1]
+                    )
+                            
+            else: 
+                #user not found in db
+                return jsonify({
+                    "status":"Failed to find user",
+                    "message":"User does not exist"
+                }),404
+
+            
 
     else:
         return jsonify({"status":"Error","message":"Missing session username"}),400
@@ -229,10 +248,11 @@ def search():
 
     #establish db connection
     cnx = get_db_connection()
-    cursor = cnx.cursor()
-
+    cursor = cnx.cursor(buffered=True)
+    rows = None
    
     #sql injection vulnerable string
+
     query = f"SELECT firstName, lastName, address, phoneNumber, licenseNumber FROM USERS WHERE firstName = '{firstName}' AND lastName = '{lastName}'"
     print(query, flush=True)
 
@@ -241,17 +261,35 @@ def search():
         cursor.execute(query)
         rows = cursor.fetchall()
 
+       
+        
+
+    except Exception as e:
+        cursor.close()
+        cnx.close()
+
+        return jsonify({
+            "status":"User retrieval failed",
+            "Error": str(e)
+        }),500
+    
+    finally:
+        cursor.close()
+        cnx.close()
+
         if len(rows)>0:
             persons = []
 
             for (first_, last_, address, phoneNum, licenseNum) in rows: #if query resulted in retireved data return it to user
                 persons.append({
                         "status": "User found",
-                        "Name": first_ + " " + last_,
-                        "Address": address,
-                        "Phone Number": phoneNum,
-                        "License Number": licenseNum
+                        "Name": "" if not first_ or not last_ else first_ + " " + last_,
+                        "Address": "" if not address else address ,
+                        "Phone Number": "" if not phoneNum else phoneNum,
+                        "License Number": "" if not licenseNum else licenseNum
                     })
+                
+            
             
             return jsonify(persons),200  #return json object of user data  in DB
         
@@ -262,17 +300,9 @@ def search():
                 "status":"Failed to find user",
                 "message":"User does not exist"
             }),404
-        
 
-    except Exception as e:
-        return jsonify({
-            "status":"User retrieval failed",
-            "Error": str(e)
-        }),500
     
-    finally:
-        cursor.close()
-        cnx.close()
+        
 
 
 
@@ -297,6 +327,7 @@ def update_phoneNum():
     #establish db connection
     cnx = get_db_connection()
     cursor = cnx.cursor()
+    lastRowId = None
 
 
     if(session.get("username")):
@@ -307,31 +338,45 @@ def update_phoneNum():
             #updating user to phone num in users table of db
             query = "UPDATE USERS set phoneNumber = %s WHERE username = %s"
             values = (new_number, session.get("username"))
+            
             cursor.execute(query, values)
             cnx.commit()
 
-
-            #check update was successful
+            
+            
+             #check update was successful
             if cursor.rowcount ==1:
+                lastRowId = cursor.lastrowid
+                
+        
+        #return exepction message
+        except Exception as e:
+
+            cursor.close()
+            cnx.close()
+
+            return jsonify({ "status":"error",
+                    "message": str(e)
+            }),500
+    
+        finally:
+            cursor.close()
+            cnx.close()
+
+            if lastRowId:
                 return jsonify({"status":"success",
                         "message":"Update successfull",
-                        "userId":cursor.lastrowid
+                        "userId":lastRowId
                         }),201
             else:
+                
+
                 return jsonify({
                     "status":"fail",
                     "message": "Update registration failed",
                 }),500
-        
-        #return exepction message
-        except Exception as e:
-            return jsonify({ "status":"error",
-                    "message": str(e)
-            }),500
 
-        finally:
-            cursor.close()
-            cnx.close()
+    
     else:
         return jsonify({"status":"Error",
                         "message": "Missing session username"})
@@ -354,13 +399,26 @@ def lookup(username):
     query = f"SELECT firstName, lastName, address, phoneNumber, licenseNumber FROM USERS WHERE username = '{username}'"
     print(query, flush=True)
 
+    rows = None
     try:
 
         cursor.execute(query)
-        row = cursor.fetchone()
+        rows = cursor.fetchall()
 
-        if row: #if query resulted in retireved data return it to user
-                first_name, last_name, address, phone_num, license_num = row
+        
+
+    except Exception as e:
+        return jsonify({
+            "status":"User retrieval failed",
+            "Error": str(e)
+        }),500
+    
+    finally:
+        cursor.close()
+        cnx.close()
+
+        if rows: #if query resulted in retireved data return it to user
+                first_name, last_name, address, phone_num, license_num = rows[0]
                 return jsonify({
                     "status": "User found",
                     "Name": f"{first_name} {last_name}",
@@ -376,16 +434,8 @@ def lookup(username):
                 "status":"Failed to find user",
                 "message":"User does not exist"
             }),404
-
-    except Exception as e:
-        return jsonify({
-            "status":"User retrieval failed",
-            "Error": str(e)
-        }),500
-    
-    finally:
-        cursor.close()
-        cnx.close()
+        
+        
 
 
 
