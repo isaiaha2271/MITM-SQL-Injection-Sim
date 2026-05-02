@@ -32,6 +32,7 @@ def get_db_connection():
 
 #intialize login_manager and flask app
 app = Flask(__name__)
+app.config['JSON_SORT_KEYS'] = False
 app.secret_key = load_config('FLASK_SECRET_KEY', 'dev-key-only')
 app.logger.setLevel(logging.DEBUG)
 
@@ -52,7 +53,7 @@ def register():
         return redirect(url_for('dashboard'))
     
     if request.method == "GET":
-        return render_template("register")
+        return render_template("register.html")
     
     #get values submited with form
     username = request.form["username"]
@@ -62,7 +63,10 @@ def register():
     address = request.form["address"]
     phoneNum = request.form["phoneNumber"]
     licenseNum = request.form["licenseNumber"]
+    company = request.form["company"]
 
+    if not first_name or not last_name or not company or not phoneNum or not licenseNum or not company:
+        return "Missing required fields", 400
     #establish connection to db
     cnx = get_db_connection()
     cursor = cnx.cursor()
@@ -72,20 +76,21 @@ def register():
     try: 
         #adding user to users table of db
         add_user = ("INSERT INTO USERS "
-                    "(username, password, address, phoneNumber, licenseNumber, firstName, lastName) "
-                    "VALUES (%s, %s,%s, %s,%s, %s, %s)")
+                    "(username, password, address, phoneNumber, licenseNumber, firstname, lastname, company) "
+                    "VALUES (%s, %s,%s, %s,%s, %s, %s, %s)")
         
         new_user = (username, password, 
                     None if address=="" else address, 
-                    None if phoneNum=="" else phoneNum, 
-                    None if licenseNum=="" else licenseNum,
-                    None if first_name=="" else first_name, 
-                    None if last_name=="" else last_name,
+                    phoneNum, 
+                    licenseNum,
+                    first_name, 
+                    last_name,
+                    company
                 )
         cursor.execute(add_user, new_user)
 
         cnx.commit()
-        
+        print(cursor)
         rowCount = cursor.rowcount
         
     
@@ -140,7 +145,7 @@ def login():
     cursor = cnx.cursor(buffered=True)
 
     try:                                                               #=admin' OR '1'='1
-        query = f"SELECT username, password FROM USERS WHERE username = '{username_}' AND password = '{password_}'"
+        query = "SELECT username, password FROM USERS WHERE username = '" + str(username_) + "' AND password = '" + str(password_) + "'"
         #print("YOOOOOOOOOOOOO", flush=True)
         print(query, flush=True)
         cursor.execute(query)
@@ -161,6 +166,8 @@ def login():
     
     finally:
         print(f"rows fetched: {len(rows)}", flush = True)
+        for row in rows:
+            print(str(row))   
         cursor.close()
         cnx.close()
 
@@ -187,7 +194,7 @@ def dashboard():
     result = None
     if (session.get("username")):
         try:
-            query = f"SELECT firstName, lastName FROM USERS WHERE username = '{session.get('username')}'"
+            query = "SELECT firstname, lastname FROM USERS WHERE username = '" + str(session.get('username')) + "'"
             
             cursor.execute(query)
             rows = cursor.fetchall()
@@ -253,7 +260,7 @@ def search():
    
     #sql injection vulnerable string
 
-    query = f"SELECT firstName, lastName, address, phoneNumber, licenseNumber FROM USERS WHERE firstName = '{firstName}' AND lastName = '{lastName}'"
+    query = "SELECT firstname, lastname, address, phoneNumber, licenseNumber FROM USERS WHERE firstname = '" + str(firstName)  + "' AND lastname = '" + str(lastName) + "'"
     print(query, flush=True)
 
     try:
@@ -297,8 +304,8 @@ def search():
         else: 
             #user not found in db
             return jsonify({
-                "status":"Failed to find user",
-                "message":"User does not exist"
+                "status":"Fail",
+                "message":"Person not Found"
             }),404
 
     
@@ -311,23 +318,23 @@ def search():
 
 
 #parameterized end to show a solution to prevent sql injection
-@app.route('/update_phone_number', methods=['GET', 'POST'])
+@app.route('/update_contact_info', methods=['GET', 'POST'])
 def update_phoneNum():
     if (not session.get("logged_in")):
         return redirect(url_for("login"))
     
     if (request.method == 'GET'):
-        return render_template("updatePhone.html")
+        return render_template("updateContact.html")
     
     
 
 
-    new_number = request.form["new_number"]
+    new_number = request.form["phoneNumber"]
+    new_address = request.form["address"]
 
     #establish db connection
     cnx = get_db_connection()
     cursor = cnx.cursor()
-    lastRowId = None
 
 
     if(session.get("username")):
@@ -336,17 +343,15 @@ def update_phoneNum():
         #attempt to update user phonenumber  
         try: 
             #updating user to phone num in users table of db
-            query = "UPDATE USERS set phoneNumber = %s WHERE username = %s"
-            values = (new_number, session.get("username"))
+            query = "UPDATE USERS set phoneNumber = %s, address = %s WHERE username = %s"
+            values = (new_number,new_address, session.get("username"))
             
             cursor.execute(query, values)
             cnx.commit()
 
             
             
-             #check update was successful
-            if cursor.rowcount ==1:
-                lastRowId = cursor.lastrowid
+           
                 
         
         #return exepction message
@@ -360,13 +365,13 @@ def update_phoneNum():
             }),500
     
         finally:
+            numAffectedRows = cursor.rowcount
             cursor.close()
             cnx.close()
 
-            if lastRowId:
+            if numAffectedRows > 0:
                 return jsonify({"status":"success",
-                        "message":"Update successfull",
-                        "userId":lastRowId
+                        "message":"Update successfull"
                         }),201
             else:
                 
@@ -382,12 +387,76 @@ def update_phoneNum():
                         "message": "Missing session username"})
 
     
+#parameterized end to show a solution to prevent sql injection
+@app.route('/update_company', methods=['GET', 'POST'])
+def update_company():
+    if (not session.get("logged_in")):
+        return redirect(url_for("login"))
+    
+    if (request.method == 'GET'):
+        return render_template("updateCompany.html")
+    
+    
 
+
+    new_company = request.form["new_company"]
+
+    #establish db connection
+    cnx = get_db_connection()
+    cursor = cnx.cursor()
+
+
+    if(session.get("username")):
+
+
+        #attempt to update user phonenumber  
+        try: 
+            #updating user to phone num in users table of db
+            query = "UPDATE USERS set company = '" + str(new_company) + "' WHERE username = '" + str(session["username"]) + "'"   
+            print(query, flush=True)
+            cursor.execute(query)
+            cnx.commit()
+
+        
+                
+        
+        #return exepction message
+        except Exception as e:
+
+            cursor.close()
+            cnx.close()
+
+            return jsonify({ "status":"error",
+                    "message": str(e)
+            }),500
+    
+        finally:
+            numAffectedRows = cursor.rowcount
+            cursor.close()
+            cnx.close()
+
+            if numAffectedRows> 0:
+                print(f"numAffectedRows: {numAffectedRows}")
+                return jsonify({"status":"success",
+                        "message":"Update successful",
+                        }),201
+            else:
+                
+
+                return jsonify({
+                    "status":"fail",
+                    "message": "Update  failed",
+                }),500
+
+    
+    else:
+        return jsonify({"status":"Error",
+                        "message": "Missing session username"})
 
 
 #GET end point for retreiving a user
-@app.route('/lookup/<username>', methods=['GET'])
-def lookup(username):
+@app.route('/find_company_drivers/<company>', methods=['GET'])
+def find_company_drivers(company):
     if (not session.get("logged_in")):
         return redirect(url_for("login"))
     
@@ -395,47 +464,68 @@ def lookup(username):
     cnx = get_db_connection()
     cursor = cnx.cursor()
 
+    company_ = str(company.strip())
     #sql injection vulnerable string
-    query = f"SELECT firstName, lastName, address, phoneNumber, licenseNumber FROM USERS WHERE username = '{username}'"
+    query = "SELECT firstname, lastname, address, phoneNumber, licenseNumber FROM USERS WHERE company = '" + str(company_).strip() + "'"
     print(query, flush=True)
 
     rows = None
+    print("NOOOOOOO", flush=True)
     try:
+        print("YOOOOOOOOOOOOOOOOOOOOO", flush=True)
 
         cursor.execute(query)
+        print("INBETWEEN", flush =True)
         rows = cursor.fetchall()
+        
+        print(f"cursor result {rows}", flush=True)
+
 
         
 
     except Exception as e:
         return jsonify({
-            "status":"User retrieval failed",
+            "status":"Driver retrieval failed",
             "Error": str(e)
         }),500
     
     finally:
+    
         cursor.close()
         cnx.close()
 
+        drivers = []
+
         if rows: #if query resulted in retireved data return it to user
-                first_name, last_name, address, phone_num, license_num = rows[0]
-                return jsonify({
-                    "status": "User found",
-                    "Name": f"{first_name} {last_name}",
-                    "Address": address,
-                    "Phone Number": phone_num,
-                    "License Number": license_num
-                }), 200
+                for (first_name, last_name, address, phone_num, license_num) in  rows:
+                    drivers.append({
+                                "status": "User found",
+                                "Name": "" if not first_name or not last_name else first_name + " " + last_name,
+                                "Address": "" if not address else address ,
+                                "Phone Number": "" if not phone_num else phone_num,
+                                "License Number": "" if not license_num else license_num
+                            })
+                return jsonify({"Drivers":drivers}),200
+                
+               
         
 
         else: 
-            #user not found in db
+            #company not found in db
             return jsonify({
-                "status":"Failed to find user",
-                "message":"User does not exist"
+                "status":"Fail",
+                "message":"Failed to find drivers"
             }),404
         
-        
+'''for  first_name, last_name, address, phone_num, license_num in rows:
+            persons.append({
+                "status": "User found",
+                "Name": "" if not first_name or not last_name else first_name + " " + last_name,
+                "Address": "" if not address else address ,
+                "Phone Number": "" if not phone_num else phone_num,
+                "License Number": "" if not license_num else license_num
+            })
+    return jsonify(persons), 200'''
 
 
 

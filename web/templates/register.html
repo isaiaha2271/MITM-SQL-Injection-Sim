@@ -13,11 +13,6 @@
             <label>Password: </label>
             <input type = "password" name ="password" required><br><br>
 
-
-
-            <label>Password: </label>
-            <input type = "password" name ="password" required><br><br>
-
            <label>First Name: </label>
             <input type = "text" name="firstName" required><br><br>
 
@@ -28,18 +23,21 @@
             <input type = "text" name="address" ><br><br>
 
             <label>Phone Number: </label>
-            <input type="text" name ="phoneNumber"><br><br>
+            <input type="text" name ="phoneNumber" required><br><br>
 
             <label>License Number: </label>
             <input type="text" name="licenseNumber"><br><br>
             <input type="submit" value="Register">
+
+            <label>Company: </label>
+            <input type="text" name="company" required><br><br>
 
             
         </form>
 
             <br><br>
             <label>Already Registered?</label><br>
-            <a href="login.html" class = "button">Click here to login</a>
+            <a href="{{ url_for('login') }}" class = "button">Click here to login</a>
             
 
 
