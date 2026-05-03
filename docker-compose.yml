@@ -10,6 +10,8 @@ services:
       - db
     networks:
       - sqli_lab_network
+      - mitm_labnet
+      
     secrets:
       - MYSQL_PASSWORD
       - FLASK_SECRET_KEY
@@ -52,9 +54,12 @@ services:
       - NET_ADMIN
     sysctls:
       net.ipv4.ip_forward: "1"
+    depends_on:
+      - web
     volumes:
       - ./artifacts/release:/artifacts
     ports:
+      - "8080:8080"
       - "8081:8081"
     networks:
       mitm_labnet:
@@ -68,6 +73,12 @@ services:
       - NET_ADMIN
     depends_on:
       - attacker
+      - web
+    environment:
+      HTTP_PROXY: http://attacker:8080
+      http_proxy: http://attacker:8080
+      NO_PROXY: ""
+      no_proxy: ""
     networks:
       mitm_labnet:
         ipv4_address: 172.28.0.20

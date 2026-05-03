@@ -319,7 +319,7 @@ def search():
 
 #parameterized end to show a solution to prevent sql injection
 @app.route('/update_contact_info', methods=['GET', 'POST'])
-def update_phoneNum():
+def update_contact_info():
     if (not session.get("logged_in")):
         return redirect(url_for("login"))
     
@@ -470,9 +470,7 @@ def find_company_drivers(company):
     print(query, flush=True)
 
     rows = None
-    print("NOOOOOOO", flush=True)
     try:
-        print("YOOOOOOOOOOOOOOOOOOOOO", flush=True)
 
         cursor.execute(query)
         print("INBETWEEN", flush =True)
