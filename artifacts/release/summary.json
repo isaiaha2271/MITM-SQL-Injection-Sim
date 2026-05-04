@@ -1,15 +1,16 @@
 {
-  "total_flows": 6,
+  "total_flows": 14,
   "unique_hosts": [
     "web"
   ],
   "host_counts": {
-    "web": 6
+    "web": 14
   },
   "status_counts": {
-    "200": 3,
-    "302": 1,
-    "201": 1,
+    "200": 7,
+    "302": 2,
+    "201": 2,
+    "500": 2,
     "404": 1
   }
 }

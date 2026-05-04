@@ -143,6 +143,7 @@ def login():
     #establish connection to db
     cnx = get_db_connection()
     cursor = cnx.cursor(buffered=True)
+    rows = None
 
     try:                                                               #=admin' OR '1'='1
         query = "SELECT username, password FROM USERS WHERE username = '" + str(username_) + "' AND password = '" + str(password_) + "'"
@@ -165,12 +166,14 @@ def login():
         }),500
     
     finally:
-        print(f"rows fetched: {len(rows)}", flush = True)
-        for row in rows:
-            print(str(row))   
+        if rows:
+            print(f"rows fetched: {len(rows)}", flush = True)
+            for row in rows:
+                print(str(row))   
+            
         cursor.close()
         cnx.close()
-
+        
         if session.get("logged_in"):
             return redirect(url_for('dashboard'))
         else:
