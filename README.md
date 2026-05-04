@@ -11,7 +11,7 @@ This project simulates a combined Man-in-the-Middle (MITM) and SQL Injection att
 The system consists of:
 - A vulnerable web server
 - A MySQL database storing user data
-- An attacker container using mitmproxy as a transparent proxy
+- An attacker container using mitmproxy
 - A victim/client interacting with the system
 
 ## Goals

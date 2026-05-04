@@ -145,9 +145,8 @@ def login():
     cursor = cnx.cursor(buffered=True)
     rows = None
 
-    try:                                                               #=admin' OR '1'='1
+    try:                                                               
         query = "SELECT username, password FROM USERS WHERE username = '" + str(username_) + "' AND password = '" + str(password_) + "'"
-        #print("YOOOOOOOOOOOOO", flush=True)
         print(query, flush=True)
         cursor.execute(query)
         rows = cursor.fetchall()
